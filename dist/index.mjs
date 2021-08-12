@@ -504,6 +504,7 @@ class Client {
     }
   }
   async fetch(url) {
+    console.log("[request prismic]", url, this.httpOptions);
     const res = await this.fetchFn(url, this.httpOptions);
     let json;
     try {

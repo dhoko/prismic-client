@@ -1230,6 +1230,8 @@ export class Client {
 		// @see Related issue - {@link https://github.com/prismicio/issue-tracker-wroom/issues/351}
 		// params?: Partial<BuildQueryURLArgs>
 	): Promise<T> {
+
+    console.log('[request prismic]', url, this.httpOptions);
 		// TODO: Uncomment when the Authorization header can be used
 		// @see Related issue - {@link https://github.com/prismicio/issue-tracker-wroom/issues/351}
 		// const options = this.buildRequestOptions(params);
