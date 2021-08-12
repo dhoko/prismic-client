@@ -1,30 +1,4 @@
-'use strict';
-
-Object.defineProperty(exports, '__esModule', { value: true });
-
-const prismicH = require('@prismicio/helpers');
-
-function _interopNamespace(e) {
-	if (e && e.__esModule) return e;
-	var n = Object.create(null);
-	if (e) {
-		Object.keys(e).forEach(function (k) {
-			if (k !== 'default') {
-				var d = Object.getOwnPropertyDescriptor(e, k);
-				Object.defineProperty(n, k, d.get ? d : {
-					enumerable: true,
-					get: function () {
-						return e[k];
-					}
-				});
-			}
-		});
-	}
-	n['default'] = e;
-	return Object.freeze(n);
-}
-
-const prismicH__namespace = /*#__PURE__*/_interopNamespace(prismicH);
+import * as prismicH from '@prismicio/helpers';
 
 const getEndpoint = (repositoryName) => `https://${repositoryName}.cdn.prismic.io/api/v2`;
 
@@ -126,7 +100,7 @@ class PrismicError extends Error {
 
 const preview = "io.prismic.preview";
 
-const cookie = /*#__PURE__*/Object.freeze({
+var cookie = /*#__PURE__*/Object.freeze({
 	__proto__: null,
 	preview: preview
 });
@@ -194,7 +168,7 @@ const dateHour = pathWithArgsPredicate("date.hour");
 const dateHourAfter = pathWithArgsPredicate("date.hour-after");
 const dateHourBefore = pathWithArgsPredicate("date.hour-before");
 
-const predicate = /*#__PURE__*/Object.freeze({
+var predicate = /*#__PURE__*/Object.freeze({
 	__proto__: null,
 	at: at,
 	not: not,
@@ -432,7 +406,7 @@ class Client {
       const document = await this.getByID(documentId, {
         ref: previewToken
       });
-      return prismicH__namespace.asLink(prismicH__namespace.documentToLinkField(document), args.linkResolver);
+      return prismicH.asLink(prismicH.documentToLinkField(document), args.linkResolver);
     } else {
       return args.defaultURL;
     }
@@ -564,12 +538,4 @@ class Client {
   }
 }
 
-exports.Client = Client;
-exports.ForbiddenError = ForbiddenError;
-exports.ParsingError = ParsingError;
-exports.PrismicError = PrismicError;
-exports.buildQueryURL = buildQueryURL;
-exports.cookie = cookie;
-exports.createClient = createClient;
-exports.getEndpoint = getEndpoint;
-exports.predicate = predicate;
+export { Client, ForbiddenError, ParsingError, PrismicError, buildQueryURL, cookie, createClient, getEndpoint, predicate };

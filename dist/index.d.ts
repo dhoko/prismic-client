@@ -1,4 +1,5 @@
 import * as prismicT from '@prismicio/types';
+import { Agent } from 'http';
 import * as prismicH from '@prismicio/helpers';
 
 /**
@@ -64,7 +65,15 @@ interface FormField {
 /**
  * A universal API to make network requests. A subset of the `fetch()` API.
  */
-declare type FetchLike = (input: string, init?: RequestInitLike) => Promise<ResponseLike>;
+declare type FetchLike = (input: string, init?: HttpOptionsLike) => Promise<ResponseLike>;
+/**
+ * Http options we need to perform a request
+ * @link https://github.com/node-fetch/node-fetch/blob/main/%40types/index.d.ts#L76
+ */
+interface HttpOptionsLike {
+    headers?: Record<string, string>;
+    agent?: Agent;
+}
 /**
  * The minimum required properties from RequestInit.
  */
@@ -238,6 +247,7 @@ declare type ClientConfig = {
      * The function used to make network requests to the Prismic REST API. In environments where a global `fetch` function does not exist, such as Node.js, this function must be provided.
      */
     fetch?: FetchLike;
+    httpOptions?: HttpOptionsLike;
 };
 /**
  * Parameters specific to client methods that fetch all documents. These methods start with `getAll` (for example, `getAllByType`).
@@ -255,7 +265,7 @@ declare type ResolvePreviewArgs = {
     /**
      * A function that maps a Prismic document to a URL within your app.
      */
-    linkResolver: prismicH.LinkResolverFunction;
+    linkResolver?: prismicH.LinkResolverFunction;
     /**
      * A fallback URL if the Link Resolver does not return a value.
      */
@@ -298,6 +308,7 @@ declare class Client {
      * The function used to make network requests to the Prismic REST API. In environments where a global `fetch` function does not exist, such as Node.js, this function must be provided.
      */
     fetchFn: FetchLike;
+    httpOptions: HttpOptionsLike;
     /**
      * Default parameters that will be sent with each query. These parameters can be overridden on each query if needed.
      */

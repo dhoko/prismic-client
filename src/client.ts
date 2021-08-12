@@ -1,3 +1,4 @@
+// @ts-ignore
 import * as prismicT from "@prismicio/types";
 import * as prismicH from "@prismicio/helpers";
 
@@ -7,10 +8,11 @@ import { getCookie } from "./lib/getCookie";
 import {
 	FetchLike,
 	Form,
+	HttpOptionsLike,
 	HttpRequestLike,
 	Query,
 	Ref,
-	Repository
+	Repository,
 	// TODO: Uncomment when the Authorization header can be used
 	// @see Related issue - {@link https://github.com/prismicio/issue-tracker-wroom/issues/351}
 	// RequestInitLike
@@ -71,7 +73,7 @@ const createSimpleTTLCache = (): SimpleTTLCache => {
 		 */
 		set<T>(key: string, value: T, ttl: number): void {
 			cache.set(key, { expiresAt: new Date().getTime() + ttl, value });
-		}
+		},
 	};
 };
 
@@ -106,7 +108,7 @@ const enum RefStateType {
 	ReleaseByLabel,
 
 	/** Use a given ref. */
-	Manual
+	Manual,
 }
 
 /**
@@ -168,6 +170,8 @@ export type ClientConfig = {
 	 * The function used to make network requests to the Prismic REST API. In environments where a global `fetch` function does not exist, such as Node.js, this function must be provided.
 	 */
 	fetch?: FetchLike;
+
+	httpOptions?: HttpOptionsLike;
 };
 
 /**
@@ -187,7 +191,7 @@ type ResolvePreviewArgs = {
 	/**
 	 * A function that maps a Prismic document to a URL within your app.
 	 */
-	linkResolver: prismicH.LinkResolverFunction;
+	linkResolver?: prismicH.LinkResolverFunction;
 
 	/**
 	 * A fallback URL if the Link Resolver does not return a value.
@@ -236,7 +240,7 @@ const tagsPredicate = (tags: string | string[]): string =>
  * @returns The first matching ref.
  */
 const findRef = (refs: Ref[], predicate: (ref: Ref) => boolean): Ref => {
-	const ref = refs.find(ref => predicate(ref));
+	const ref = refs.find((ref) => predicate(ref));
 
 	if (!ref) {
 		throw new Error("Ref could not be found.");
@@ -280,6 +284,8 @@ export class Client {
 	 */
 	fetchFn: FetchLike;
 
+	httpOptions: HttpOptionsLike;
+
 	/**
 	 * Default parameters that will be sent with each query. These parameters can be overridden on each query if needed.
 	 */
@@ -309,10 +315,11 @@ export class Client {
 		this.endpoint = endpoint;
 		this.accessToken = options.accessToken;
 		this.defaultParams = options.defaultParams;
+		this.httpOptions = options.httpOptions || {};
 		this.internalCache = createSimpleTTLCache();
 		this.refMode = {
 			type: RefStateType.Master,
-			autoPreviewsEnabled: true
+			autoPreviewsEnabled: true,
 		};
 
 		if (options.ref) {
@@ -325,7 +332,7 @@ export class Client {
 			this.fetchFn = globalThis.fetch;
 		} else {
 			throw new Error(
-				"A valid fetch implementation was not provided. In environments where fetch is not available (including Node.js), a fetch implementation must be provided via a polyfill or the `fetch` option."
+				"A valid fetch implementation was not provided. In environments where fetch is not available (including Node.js), a fetch implementation must be provided via a polyfill or the `fetch` option.",
 			);
 		}
 
@@ -414,14 +421,15 @@ export class Client {
 	 * ```
 	 */
 	async get<TDocument extends prismicT.PrismicDocument>(
-		params?: Partial<BuildQueryURLArgs>
+		params?: Partial<BuildQueryURLArgs>,
 	): Promise<Query<TDocument>> {
 		const url = await this.buildQueryURL(params);
 
 		// TODO: Uncomment when the Authorization header can be used
 		// @see Related issue - {@link https://github.com/prismicio/issue-tracker-wroom/issues/351}
 		// return await this.fetch<Query<TDocument>>(url, params);
-		return await this.fetch<Query<TDocument>>(url);
+    // @ts-ignore
+		return await this.fetch<Query<TDocument>>(url, this.httpOptions);
 	}
 
 	/**
@@ -438,7 +446,7 @@ export class Client {
 	 * ```
 	 */
 	async getFirst<TDocument extends prismicT.PrismicDocument>(
-		params?: Partial<BuildQueryURLArgs>
+		params?: Partial<BuildQueryURLArgs>,
 	): Promise<TDocument> {
 		const result = await this.get<TDocument>(params);
 		const firstResult = result.results[0];
@@ -466,7 +474,7 @@ export class Client {
 	 * ```
 	 */
 	async getAll<TDocument extends prismicT.PrismicDocument>(
-		params: Partial<Omit<BuildQueryURLArgs, "page">> & GetAllParams = {}
+		params: Partial<Omit<BuildQueryURLArgs, "page">> & GetAllParams = {},
 	): Promise<TDocument[]> {
 		const { limit = Infinity, ...actualParams } = params;
 		const resolvedParams = { pageSize: MAX_PAGE_SIZE, ...actualParams };
@@ -505,10 +513,10 @@ export class Client {
 	 */
 	async getByID<TDocument extends prismicT.PrismicDocument>(
 		id: string,
-		params?: Partial<BuildQueryURLArgs>
+		params?: Partial<BuildQueryURLArgs>,
 	): Promise<TDocument> {
 		return await this.getFirst<TDocument>(
-			appendPredicates(predicate.at("document.id", id))(params)
+			appendPredicates(predicate.at("document.id", id))(params),
 		);
 	}
 
@@ -532,10 +540,10 @@ export class Client {
 	 */
 	async getByIDs<TDocument extends prismicT.PrismicDocument>(
 		ids: string[],
-		params?: Partial<BuildQueryURLArgs>
+		params?: Partial<BuildQueryURLArgs>,
 	): Promise<Query<TDocument>> {
 		return await this.get<TDocument>(
-			appendPredicates(predicate.in("document.id", ids))(params)
+			appendPredicates(predicate.in("document.id", ids))(params),
 		);
 	}
 
@@ -561,10 +569,10 @@ export class Client {
 	 */
 	async getAllByIDs<TDocument extends prismicT.PrismicDocument>(
 		ids: string[],
-		params?: Partial<BuildQueryURLArgs>
+		params?: Partial<BuildQueryURLArgs>,
 	): Promise<TDocument[]> {
 		return await this.getAll<TDocument>(
-			appendPredicates(predicate.in("document.id", ids))(params)
+			appendPredicates(predicate.in("document.id", ids))(params),
 		);
 	}
 
@@ -590,13 +598,13 @@ export class Client {
 	async getByUID<TDocument extends prismicT.PrismicDocument>(
 		documentType: string,
 		uid: string,
-		params?: Partial<BuildQueryURLArgs>
+		params?: Partial<BuildQueryURLArgs>,
 	): Promise<TDocument> {
 		return await this.getFirst<TDocument>(
 			appendPredicates(
 				typePredicate(documentType),
-				predicate.at(`my.${documentType}.uid`, uid)
-			)(params)
+				predicate.at(`my.${documentType}.uid`, uid),
+			)(params),
 		);
 	}
 
@@ -620,10 +628,10 @@ export class Client {
 	 */
 	async getSingle<TDocument extends prismicT.PrismicDocument>(
 		documentType: string,
-		params?: Partial<BuildQueryURLArgs>
+		params?: Partial<BuildQueryURLArgs>,
 	): Promise<TDocument> {
 		return await this.getFirst<TDocument>(
-			appendPredicates(typePredicate(documentType))(params)
+			appendPredicates(typePredicate(documentType))(params),
 		);
 	}
 
@@ -645,10 +653,10 @@ export class Client {
 	 */
 	async getByType<TDocument extends prismicT.PrismicDocument>(
 		documentType: string,
-		params?: Partial<BuildQueryURLArgs>
+		params?: Partial<BuildQueryURLArgs>,
 	): Promise<Query<TDocument>> {
 		return await this.get<TDocument>(
-			appendPredicates(typePredicate(documentType))(params)
+			appendPredicates(typePredicate(documentType))(params),
 		);
 	}
 
@@ -670,10 +678,10 @@ export class Client {
 	 */
 	async getAllByType<TDocument extends prismicT.PrismicDocument>(
 		documentType: string,
-		params?: Partial<Omit<BuildQueryURLArgs, "page">>
+		params?: Partial<Omit<BuildQueryURLArgs, "page">>,
 	): Promise<TDocument[]> {
 		return await this.getAll<TDocument>(
-			appendPredicates(typePredicate(documentType))(params)
+			appendPredicates(typePredicate(documentType))(params),
 		);
 	}
 
@@ -695,10 +703,10 @@ export class Client {
 	 */
 	async getByTag<TDocument extends prismicT.PrismicDocument>(
 		tag: string,
-		params?: Partial<BuildQueryURLArgs>
+		params?: Partial<BuildQueryURLArgs>,
 	): Promise<Query<TDocument>> {
 		return await this.get<TDocument>(
-			appendPredicates(tagsPredicate(tag))(params)
+			appendPredicates(tagsPredicate(tag))(params),
 		);
 	}
 
@@ -720,10 +728,10 @@ export class Client {
 	 */
 	async getAllByTag<TDocument extends prismicT.PrismicDocument>(
 		tag: string,
-		params?: Partial<Omit<BuildQueryURLArgs, "page">>
+		params?: Partial<Omit<BuildQueryURLArgs, "page">>,
 	): Promise<TDocument[]> {
 		return await this.getAll<TDocument>(
-			appendPredicates(tagsPredicate(tag))(params)
+			appendPredicates(tagsPredicate(tag))(params),
 		);
 	}
 
@@ -743,10 +751,10 @@ export class Client {
 	 */
 	async getByTags<TDocument extends prismicT.PrismicDocument>(
 		tags: string[],
-		params?: Partial<BuildQueryURLArgs>
+		params?: Partial<BuildQueryURLArgs>,
 	): Promise<Query<TDocument>> {
 		return await this.get<TDocument>(
-			appendPredicates(tagsPredicate(tags))(params)
+			appendPredicates(tagsPredicate(tags))(params),
 		);
 	}
 
@@ -768,10 +776,10 @@ export class Client {
 	 */
 	async getAllByTags<TDocument extends prismicT.PrismicDocument>(
 		tags: string[],
-		params?: Partial<Omit<BuildQueryURLArgs, "page">>
+		params?: Partial<Omit<BuildQueryURLArgs, "page">>,
 	): Promise<TDocument[]> {
 		return await this.getAll<TDocument>(
-			appendPredicates(tagsPredicate(tags))(params)
+			appendPredicates(tagsPredicate(tags))(params),
 		);
 	}
 
@@ -791,7 +799,8 @@ export class Client {
 			url.searchParams.set("access_token", this.accessToken);
 		}
 
-		return await this.fetch<Repository>(url.toString());
+    // @ts-ignore
+		return await this.fetch<Repository>(url.toString(), this.httpOptions);
 	}
 
 	/**
@@ -817,7 +826,7 @@ export class Client {
 	async getRefById(id: string): Promise<Ref> {
 		const refs = await this.getRefs();
 
-		return findRef(refs, ref => ref.id === id);
+		return findRef(refs, (ref) => ref.id === id);
 	}
 
 	/**
@@ -830,7 +839,7 @@ export class Client {
 	async getRefByLabel(label: string): Promise<Ref> {
 		const refs = await this.getRefs();
 
-		return findRef(refs, ref => ref.label === label);
+		return findRef(refs, (ref) => ref.label === label);
 	}
 
 	/**
@@ -841,7 +850,7 @@ export class Client {
 	async getMasterRef(): Promise<Ref> {
 		const refs = await this.getRefs();
 
-		return findRef(refs, ref => ref.isMasterRef);
+		return findRef(refs, (ref) => ref.isMasterRef);
 	}
 
 	/**
@@ -852,7 +861,7 @@ export class Client {
 	async getReleases(): Promise<Ref[]> {
 		const refs = await this.getRefs();
 
-		return refs.filter(ref => !ref.isMasterRef);
+		return refs.filter((ref) => !ref.isMasterRef);
 	}
 
 	/**
@@ -865,7 +874,7 @@ export class Client {
 	async getReleaseByID(id: string): Promise<Ref> {
 		const releases = await this.getReleases();
 
-		return findRef(releases, ref => ref.id === id);
+		return findRef(releases, (ref) => ref.id === id);
 	}
 
 	/**
@@ -878,7 +887,7 @@ export class Client {
 	async getReleaseByLabel(label: string): Promise<Ref> {
 		const releases = await this.getReleases();
 
-		return findRef(releases, ref => ref.label === label);
+		return findRef(releases, (ref) => ref.label === label);
 	}
 
 	/**
@@ -890,7 +899,8 @@ export class Client {
 		try {
 			const tagsForm = await this.getCachedRepositoryForm("tags");
 
-			return await this.fetch<string[]>(tagsForm.action);
+      // @ts-ignore
+			return await this.fetch<string[]>(tagsForm.action, this.httpOptions);
 		} catch {
 			const res = await this.getRepository();
 
@@ -906,7 +916,7 @@ export class Client {
 	 * @returns A URL string that can be requested to query content.
 	 */
 	async buildQueryURL(
-		params: Partial<BuildQueryURLArgs> = {}
+		params: Partial<BuildQueryURLArgs> = {},
 	): Promise<string> {
 		// TODO: Uncomment when the Authorization header can be used
 		// @see Related issue - {@link https://github.com/prismicio/issue-tracker-wroom/issues/351}
@@ -925,7 +935,7 @@ export class Client {
 			...this.defaultParams,
 			...actualParams,
 			accessToken,
-			ref
+			ref,
 		});
 	}
 
@@ -963,14 +973,14 @@ export class Client {
 
 		if (documentId != null) {
 			const document = await this.getByID(documentId, {
-				ref: previewToken
+				ref: previewToken,
 			});
 
 			// We know we have a valid field to resolve since we are using prismicH.documentToLinkField
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			return prismicH.asLink(
 				prismicH.documentToLinkField(document),
-				args.linkResolver
+				args.linkResolver,
 			)!;
 		} else {
 			return args.defaultURL;
@@ -991,7 +1001,7 @@ export class Client {
 	queryLatestContent(): void {
 		this.refMode = {
 			...this.refMode,
-			type: RefStateType.Master
+			type: RefStateType.Master,
 		};
 	}
 
@@ -1012,7 +1022,7 @@ export class Client {
 		this.refMode = {
 			...this.refMode,
 			type: RefStateType.ReleaseByID,
-			payload: { releaseId }
+			payload: { releaseId },
 		};
 	}
 
@@ -1033,7 +1043,7 @@ export class Client {
 		this.refMode = {
 			...this.refMode,
 			type: RefStateType.ReleaseByLabel,
-			payload: { releaseLabel }
+			payload: { releaseLabel },
 		};
 	}
 
@@ -1054,7 +1064,7 @@ export class Client {
 		this.refMode = {
 			...this.refMode,
 			type: RefStateType.Manual,
-			payload: { refStringOrFn: ref }
+			payload: { refStringOrFn: ref },
 		};
 	}
 
@@ -1144,7 +1154,7 @@ export class Client {
 			case RefStateType.ReleaseByID: {
 				const releaseId = this.refMode.payload.releaseId;
 				const repository = await this.getCachedRepository();
-				const ref = findRef(repository.refs, ref => ref.id === releaseId);
+				const ref = findRef(repository.refs, (ref) => ref.id === releaseId);
 
 				return ref.ref;
 			}
@@ -1152,7 +1162,10 @@ export class Client {
 			case RefStateType.ReleaseByLabel: {
 				const releaseLabel = this.refMode.payload.releaseLabel;
 				const repository = await this.getCachedRepository();
-				const ref = findRef(repository.refs, ref => ref.label === releaseLabel);
+				const ref = findRef(
+					repository.refs,
+					(ref) => ref.label === releaseLabel,
+				);
 
 				return ref.ref;
 			}
@@ -1174,7 +1187,7 @@ export class Client {
 			case RefStateType.Master:
 			default: {
 				const repository = await this.getCachedRepository();
-				const ref = findRef(repository.refs, ref => ref.isMasterRef);
+				const ref = findRef(repository.refs, (ref) => ref.isMasterRef);
 
 				return ref.ref;
 			}
@@ -1212,7 +1225,7 @@ export class Client {
 	 * @returns The JSON response from the network request.
 	 */
 	private async fetch<T = unknown>(
-		url: string
+		url: string,
 		// TODO: Uncomment when the Authorization header can be used
 		// @see Related issue - {@link https://github.com/prismicio/issue-tracker-wroom/issues/351}
 		// params?: Partial<BuildQueryURLArgs>
@@ -1221,7 +1234,7 @@ export class Client {
 		// @see Related issue - {@link https://github.com/prismicio/issue-tracker-wroom/issues/351}
 		// const options = this.buildRequestOptions(params);
 		// const res = await this.fetchFn(url, options);
-		const res = await this.fetchFn(url);
+		const res = await this.fetchFn(url, this.httpOptions);
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let json: any;
@@ -1246,7 +1259,7 @@ export class Client {
 				if (isParsingErrorAPIResponse(json)) {
 					throw new ParsingError(json.message, {
 						url,
-						response: json
+						response: json,
 					});
 				}
 
@@ -1266,8 +1279,8 @@ export class Client {
 						"error" in json ? json.error : json.message,
 						{
 							url,
-							response: json
-						}
+							response: json,
+						},
 					);
 				}
 			}
